@@ -194,15 +194,15 @@
       currentTileLayer = L.tileLayer(data.tile_url, { opacity: 0.85, maxZoom: 18 }).addTo(map);
 
       const [minLon, minLat, maxLon, maxLat] = regInfo.bbox;
-      const lossPoly = L.rectangle([
-        [minLat + 0.02, minLon + 0.02],
-        [maxLat - 0.02, maxLon - 0.02]
-      ], {
-        color: '#ef4444',
-        weight: 2,
-        fillColor: '#ef4444',
-        fillOpacity: 0.35
-      });
+    const lossPoly = L.rectangle([
+  [minLat + 0.02, minLon + 0.02],
+  [maxLat - 0.02, maxLon - 0.02]
+], {
+  color: '#ef4444',       // Border line red rahegi
+  weight: 2,              // Line thickness
+  dashArray: '5, 5',      // Dashed boundary format
+  fillOpacity: 0.05       // Filling color 5% kar di taaki map 100% visible rahe
+});
       highlightGroup.addLayer(lossPoly);
 
       document.getElementById('lossHa').innerText = `${data.metrics.loss_hectares} ha`;
