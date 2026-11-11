@@ -1,12 +1,31 @@
+import os
+import json
 import ee
 
 def init_gee(project_id: str = "urban-tree-canopy-loss"):
-    """Initializes Google Earth Engine session."""
+    """Initializes GEE using Service Account JSON in production or fallback locally."""
+    ee_service_key = os.getenv("GEE_SERVICE_KEY")
+    
+    if ee_service_key:
+        try:
+            # Parse JSON string from environment variable
+            key_dict = json.loads(ee_service_key)
+            credentials = ee.ServiceAccountCredentials(
+                key_dict["client_email"],
+                key_data=ee_service_key
+            )
+            ee.Initialize(credentials, project="urban-tree-canopy-loss")
+            print("✅ Google Earth Engine initialized via Production Service Account!")
+            return
+        except Exception as e:
+            print("⚠️ Service Account auth failed, attempting standard init:", e)
+
+    # Local fallback
     try:
         ee.Initialize(project="urban-tree-canopy-loss")
         print("✅ Google Earth Engine successfully initialized!")
     except Exception as e:
-        print("❌ GEE Initialization failed. Run 'earthengine authenticate' in terminal.")
+        print("❌ GEE Initialization failed. Details:", e)
         raise e
 
 def mask_sentinel2_clouds(image):
