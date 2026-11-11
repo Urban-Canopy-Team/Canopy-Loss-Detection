@@ -167,7 +167,7 @@
       btn.innerHTML = `<span>⏳ Processing Satellite Data...</span>`;
 
       try {
-        const response = await fetch('http://localhost:8000/api/v1/analyze-canopy-loss', {
+        const response = await fetch('https://canopy-loss-detection.onrender.com/api/v1/analyze-canopy-loss', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
