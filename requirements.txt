@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+earthengine-api
+torch
+torchvision
+numpy
+rasterio
+geopandas
+shapely
+pydantic
+python-multipart
