@@ -29,25 +29,39 @@
   </script>
 
   <style>
+    :root {
+      --bg-main: #060b14;
+      --bg-card: rgba(15, 23, 42, 0.82);
+    }
     html { scroll-behavior: smooth; color-scheme: dark; }
-    body { background: #060b14; }
-    #map { height: 600px; width: 100%; background: #060b14; z-index: 1; }
+    body {
+      background-color: var(--bg-main);
+      transition: background-color 0.4s ease;
+    }
+    #map { height: 600px; width: 100%; background: var(--bg-main); z-index: 1; }
     .glass-card {
-      background: rgba(15, 23, 42, 0.88);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: background 0.4s ease;
     }
     input[type="date"]::-webkit-calendar-picker-indicator {
       filter: invert(1);
       cursor: pointer;
       opacity: 0.95;
     }
+    .theme-dot {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .theme-dot:hover {
+      transform: scale(1.18);
+    }
   </style>
 </head>
 <body class="text-slate-100 font-sans antialiased selection:bg-emerald-500/30">
 
   <!-- Top Sticky Header -->
-  <header class="sticky top-0 z-40 glass-card border-b border-slate-800 px-6 py-4">
+  <header class="sticky top-0 z-40 glass-card border-b border-slate-800/90 px-6 py-4">
     <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-3.5">
         <div class="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-2xl">
@@ -68,11 +82,28 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <a href="#mapSection" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
+      <!-- Right Header Controls: Theme Switcher + Map Jump + API Status -->
+      <div class="flex flex-wrap items-center gap-3">
+
+        <!-- Background Theme Selector Pill -->
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-700/80" title="Change Dashboard Background Theme">
+          <span class="text-[11px] font-medium text-slate-400 hidden sm:inline">Theme:</span>
+          <button onclick="setTheme('#060b14', 'rgba(15, 23, 42, 0.85)')" class="theme-dot w-4 h-4 rounded-full bg-[#060b14] border border-slate-400 cursor-pointer" title="Midnight Navy"></button>
+          <button onclick="setTheme('#041610', 'rgba(6, 32, 24, 0.85)')" class="theme-dot w-4 h-4 rounded-full bg-[#064e3b] border border-emerald-300 cursor-pointer" title="Deep Forest"></button>
+          <button onclick="setTheme('#110924', 'rgba(25, 14, 48, 0.85)')" class="theme-dot w-4 h-4 rounded-full bg-[#3b0764] border border-purple-300 cursor-pointer" title="Cosmic Purple"></button>
+          <button onclick="setTheme('#121212', 'rgba(28, 28, 30, 0.86)')" class="theme-dot w-4 h-4 rounded-full bg-[#27272a] border border-zinc-300 cursor-pointer" title="Obsidian Dark"></button>
+          
+          <!-- Custom Color Wheel Picker -->
+          <label class="relative flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 to-emerald-400 cursor-pointer theme-dot" title="Pick Custom Background Color">
+            <input type="color" id="customBgPicker" value="#060b14" oninput="setCustomTheme(this.value)" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer">
+          </label>
+        </div>
+
+        <a href="#mapSection" class="px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
           🗺️ Jump to Map ↓
         </a>
-        <div class="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+
+        <div class="hidden md:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
           <span class="text-emerald-300 font-mono">API Live</span>
         </div>
@@ -84,13 +115,13 @@
   <main class="max-w-6xl mx-auto px-4 md:px-6 py-8 space-y-8">
 
     <!-- SECTION 1: TOP LARGE CONTROL PANEL -->
-    <section class="glass-card border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl">
+    <section class="glass-card border border-slate-800/90 rounded-3xl p-6 md:p-8 shadow-2xl">
       <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
         <div>
           <span class="text-xs font-bold uppercase tracking-widest text-emerald-400">Step 1 • Configure Analysis</span>
           <h2 class="text-xl md:text-2xl font-bold text-white mt-1">Select Study Region & Observation Dates</h2>
         </div>
-        <span class="px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-slate-400">
+        <span class="px-3 py-1 rounded-lg bg-slate-950/70 border border-slate-800 text-xs font-mono text-slate-400">
           Resolution: 10m × 10m / pixel
         </span>
       </div>
@@ -100,7 +131,7 @@
         <!-- Region Select (4 cols) -->
         <div class="md:col-span-4">
           <label class="block text-sm font-semibold text-slate-300 mb-2">Target Corridor / Forest Zone</label>
-          <select id="regionSelect" onchange="onRegionChange()" class="w-full bg-slate-950 border border-slate-700 hover:border-emerald-500/60 rounded-2xl px-4 py-3.5 text-sm md:text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition">
+          <select id="regionSelect" onchange="onRegionChange()" class="w-full bg-slate-950/90 border border-slate-700 hover:border-emerald-500/60 rounded-2xl px-4 py-3.5 text-sm md:text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition">
             <option value="delhi_central">Delhi Central Ridge Forest</option>
             <option value="dwarka">Dwarka Sub-City Green Belt</option>
             <option value="noida">Noida Sector 62 / Expressway</option>
@@ -111,13 +142,13 @@
         <!-- Start Date (3 cols) -->
         <div class="md:col-span-3">
           <label class="block text-sm font-semibold text-slate-300 mb-2">Baseline Date (T1)</label>
-          <input type="date" id="startDate" value="2019-04-01" onclick="this.showPicker()" class="w-full bg-slate-950 border border-slate-700 hover:border-emerald-500/60 rounded-2xl px-3.5 py-3.5 text-sm font-mono text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
+          <input type="date" id="startDate" value="2019-04-01" onclick="this.showPicker()" class="w-full bg-slate-950/90 border border-slate-700 hover:border-emerald-500/60 rounded-2xl px-3.5 py-3.5 text-sm font-mono text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
         </div>
 
         <!-- End Date (3 cols) -->
         <div class="md:col-span-3">
           <label class="block text-sm font-semibold text-slate-300 mb-2">Target Date (T2)</label>
-          <input type="date" id="endDate" value="2026-05-30" onclick="this.showPicker()" class="w-full bg-slate-950 border border-slate-700 hover:border-emerald-500/60 rounded-2xl px-3.5 py-3.5 text-sm font-mono text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
+          <input type="date" id="endDate" value="2026-05-30" onclick="this.showPicker()" class="w-full bg-slate-950/90 border border-slate-700 hover:border-emerald-500/60 rounded-2xl px-3.5 py-3.5 text-sm font-mono text-white focus:outline-none focus:border-emerald-500 cursor-pointer">
         </div>
 
         <!-- Large Analyze CTA Button (2 cols) -->
@@ -129,7 +160,7 @@
       </div>
 
       <!-- Large Animated Loading Progress Bar -->
-      <div id="loadingBox" class="hidden mt-6 p-4 rounded-2xl bg-slate-950 border border-emerald-500/40 space-y-2.5">
+      <div id="loadingBox" class="hidden mt-6 p-4 rounded-2xl bg-slate-950/90 border border-emerald-500/40 space-y-2.5">
         <div class="flex items-center justify-between text-sm text-emerald-300 font-semibold">
           <div class="flex items-center gap-2.5">
             <svg class="animate-spin h-5 w-5 text-emerald-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -151,7 +182,7 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <!-- LEFT BIG CARD: Quantified Canopy Loss Impact -->
-        <div class="glass-card border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col justify-between space-y-6">
+        <div class="glass-card border border-slate-800/90 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col justify-between space-y-6">
           <div>
             <div class="flex items-center justify-between mb-4">
               <div>
@@ -165,13 +196,13 @@
 
             <!-- Big KPI Boxes -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-              <div class="p-5 rounded-2xl bg-gradient-to-br from-rose-500/15 to-slate-950 border border-rose-500/30">
+              <div class="p-5 rounded-2xl bg-gradient-to-br from-rose-500/15 to-slate-950/90 border border-rose-500/30">
                 <div class="text-xs font-semibold uppercase tracking-wider text-rose-300">Total Depleted Area</div>
                 <div id="lossHa" class="text-3xl md:text-4xl font-extrabold font-mono text-rose-400 mt-2">0.0 ha</div>
                 <div class="text-xs text-slate-400 mt-1">100 m² per Sentinel-2 pixel</div>
               </div>
 
-              <div class="p-5 rounded-2xl bg-gradient-to-br from-amber-500/15 to-slate-950 border border-amber-500/30">
+              <div class="p-5 rounded-2xl bg-gradient-to-br from-amber-500/15 to-slate-950/90 border border-amber-500/30">
                 <div class="text-xs font-semibold uppercase tracking-wider text-amber-300">Est. Trees Lost</div>
                 <div id="treesLost" class="text-3xl md:text-4xl font-extrabold font-mono text-amber-400 mt-2">0</div>
                 <div class="text-xs text-slate-400 mt-1">At ~400 trees/ha urban density</div>
@@ -180,7 +211,7 @@
           </div>
 
           <!-- Model Performance Benchmark Card -->
-          <div class="p-5 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-3">
+          <div class="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <span class="text-sm font-semibold text-slate-200">Two-Date U-Net CNN Accuracy</span>
               <div class="flex items-center gap-2 font-mono text-xs">
@@ -198,7 +229,7 @@
         </div>
 
         <!-- RIGHT BIG CARD: Afforestation & Net-Zero Recovery Simulator -->
-        <div id="afforestation-panel" class="glass-card border border-emerald-700/40 bg-gradient-to-b from-emerald-950/40 to-slate-900/90 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col justify-between space-y-6">
+        <div id="afforestation-panel" class="glass-card border border-emerald-700/40 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col justify-between space-y-6">
           <div>
             <div class="flex items-center justify-between mb-4">
               <div>
@@ -239,11 +270,11 @@
             </div>
 
             <div class="grid grid-cols-2 gap-4">
-              <div class="p-4 rounded-2xl bg-slate-950/90 border border-slate-800">
+              <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800">
                 <p class="text-xs font-medium text-slate-400">Est. Time to Net-Zero</p>
                 <p id="net-zero-years" class="text-2xl font-mono font-extrabold text-white mt-1">-- yrs</p>
               </div>
-              <div class="p-4 rounded-2xl bg-slate-950/90 border border-slate-800">
+              <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800">
                 <p class="text-xs font-medium text-slate-400">Replantation Land Needed</p>
                 <p id="required-land-ha" class="text-2xl font-mono font-extrabold text-emerald-300 mt-1">-- ha</p>
               </div>
@@ -259,9 +290,9 @@
     </section>
 
     <!-- SECTION 3: SCROLL-DOWN FULL-WIDTH INTERACTIVE SATELLITE MAP -->
-    <section id="mapSection" class="glass-card border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
+    <section id="mapSection" class="glass-card border border-slate-800/90 rounded-3xl overflow-hidden shadow-2xl">
       <!-- Map Header & Controls Bar -->
-      <div class="p-5 md:px-7 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-900/90">
+      <div class="p-5 md:px-7 border-b border-slate-800/90 flex flex-wrap items-center justify-between gap-4">
         <div>
           <span class="text-xs font-bold uppercase tracking-widest text-teal-400">Step 4 • Geospatial Visualization</span>
           <h3 class="text-lg md:text-xl font-bold text-white mt-0.5">Interactive Satellite Canopy Loss Map</h3>
@@ -270,7 +301,7 @@
         <!-- Inline Map Controls -->
         <div class="flex flex-wrap items-center gap-4">
           <!-- Basemap Switcher -->
-          <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <div class="flex bg-slate-950/90 p-1 rounded-xl border border-slate-800">
             <button id="btnSatellite" onclick="setBasemap('satellite')" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold text-xs transition cursor-pointer">
               Satellite
             </button>
@@ -280,14 +311,14 @@
           </div>
 
           <!-- Opacity Control -->
-          <div class="flex items-center gap-2.5 bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-800 text-xs">
+          <div class="flex items-center gap-2.5 bg-slate-950/90 px-3.5 py-2 rounded-xl border border-slate-800 text-xs">
             <span class="text-slate-400">Loss Opacity:</span>
             <input type="range" id="opacitySlider" min="0" max="100" value="85" oninput="updateOverlayOpacity()" class="w-24 accent-rose-500 cursor-pointer">
             <span id="opacityVal" class="font-mono font-bold text-emerald-400 w-9">85%</span>
           </div>
 
           <!-- AOI Boundary Toggle -->
-          <label class="flex items-center gap-2 bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-800 text-xs text-slate-300 cursor-pointer">
+          <label class="flex items-center gap-2 bg-slate-950/90 px-3.5 py-2 rounded-xl border border-slate-800 text-xs text-slate-300 cursor-pointer">
             <input type="checkbox" id="toggleBoundary" checked onchange="toggleBoundaryBox()" class="accent-emerald-500 rounded cursor-pointer">
             <span>AOI Box</span>
           </label>
@@ -325,6 +356,33 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
+    // --- THEME & BACKGROUND COLOR SWITCHER ---
+    function setTheme(bgHex, cardRgba) {
+      document.documentElement.style.setProperty('--bg-main', bgHex);
+      document.documentElement.style.setProperty('--bg-card', cardRgba);
+      document.getElementById('customBgPicker').value = bgHex;
+      localStorage.setItem('canopy_theme_bg', bgHex);
+      localStorage.setItem('canopy_theme_card', cardRgba);
+    }
+
+    function setCustomTheme(hex) {
+      // Convert chosen hex color into a slightly lighter translucent glass card color
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      const cardRgba = `rgba(${Math.min(255, r + 16)}, ${Math.min(255, g + 20)}, ${Math.min(255, b + 28)}, 0.85)`;
+      setTheme(hex, cardRgba);
+    }
+
+    // Load saved theme on startup
+    (function initSavedTheme() {
+      const savedBg = localStorage.getItem('canopy_theme_bg');
+      const savedCard = localStorage.getItem('canopy_theme_card');
+      if (savedBg && savedCard) {
+        setTheme(savedBg, savedCard);
+      }
+    })();
+
     const REGIONS = {
       delhi_central: { name: "Delhi Central Ridge Forest", bbox: [77.10, 28.50, 77.25, 28.65], center: [28.575, 77.175], zoom: 12 },
       dwarka: { name: "Dwarka Sub-City Green Belt", bbox: [77.00, 28.55, 77.10, 28.62], center: [28.585, 77.05], zoom: 13 },
