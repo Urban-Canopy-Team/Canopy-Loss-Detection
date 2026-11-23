@@ -29,6 +29,9 @@
   </script>
 
   <style>
+    .dark-osm-tiles {
+      filter: invert(100%) hue-rotate(180deg) brightness(92%) contrast(90%);
+    }
     :root {
       --bg-main: #060b14;
       --bg-card: rgba(15, 23, 42, 0.82);
@@ -59,7 +62,7 @@
       transform: scale(1.2);
     }
 
-    /* --- INTRO SPLASH SCREEN (VERIXA STYLE) --- */
+    /* --- INTRO SPLASH SCREEN --- */
     #introSplash {
       background: radial-gradient(circle at center, #071915 0%, #020408 65%, #000000 100%);
       transition: opacity 0.7s var(--spring-ease), transform 0.7s var(--spring-ease), visibility 0.7s;
@@ -139,7 +142,6 @@
 
   <!-- FULL-SCREEN INTRO SPLASH SCREEN -->
   <div id="introSplash" class="fixed inset-0 z-[9999] flex flex-col items-center justify-center px-6 text-center">
-    <!-- Glowing Geometric Canopy Emblem -->
     <div class="splash-logo-glow mb-6">
       <svg class="w-16 h-16 md:w-20 md:h-20" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -154,17 +156,14 @@
       </svg>
     </div>
 
-    <!-- Main Welcome Headline -->
     <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white">
       Welcome to <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">CanopyGuard</span>
     </h1>
 
-    <!-- Crisp Tagline -->
     <p class="mt-3 text-sm sm:text-base font-medium tracking-wide text-emerald-300/80">
       Detect. Quantify. Restore.
     </p>
 
-    <!-- Glowing Horizontal Progress Bar -->
     <div class="w-56 sm:w-64 h-1.5 bg-slate-800/90 rounded-full overflow-hidden mt-7">
       <div class="splash-bar-fill h-full bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 rounded-full"></div>
     </div>
@@ -194,7 +193,6 @@
 
       <!-- Right Header Controls: Theme Switcher + Map Jump + API Status -->
       <div class="flex flex-wrap items-center gap-3">
-
         <!-- Background Theme Selector Pill -->
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-700/80" title="Change Dashboard Background Theme">
           <span class="text-[11px] font-medium text-slate-400 hidden sm:inline">Theme:</span>
@@ -540,8 +538,10 @@
       attribution: 'Esri Satellite'
     }).addTo(map);
 
-    const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: 'CartoDB Dark'
+    const darkLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      className: 'dark-osm-tiles',
+      maxZoom: 19
     });
 
     let currentTileLayer = null;
