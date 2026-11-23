@@ -30,7 +30,7 @@
     </div>
     <div class="flex items-center gap-2">
       <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-      <span class="text-xs text-emerald-400 font-mono">Backend API Connected (port 8000)</span>
+      <span class="text-xs text-emerald-400 font-mono">Backend API Connected</span>
     </div>
   </header>
 
@@ -38,7 +38,7 @@
     
     <!-- Left Sidebar Controls -->
     <aside class="w-80 bg-slate-800 border-r border-slate-700 p-5 flex flex-col justify-between overflow-y-auto z-20">
-      <div class="space-y-6">
+      <div class="space-y-5">
         
         <!-- Target Region Preset -->
         <div>
@@ -92,11 +92,63 @@
               <span class="font-bold text-emerald-400">0.891</span>
             </div>
           </div>
+
+          <!-- CHANGE 1: Afforestation & Net-Zero Recovery Simulator -->
+          <div id="afforestation-panel" class="pt-3 border-t border-slate-700/70 space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-emerald-300 uppercase tracking-wider">
+                🌱 Recovery Simulator
+              </h4>
+              <span id="recovery-badge" class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-emerald-500/20 text-emerald-300">
+                0% Offset
+              </span>
+            </div>
+
+            <!-- Annual Plantation Slider -->
+            <div>
+              <div class="flex justify-between text-xs text-slate-300 mb-1">
+                <span>Plantation Rate</span>
+                <span id="rate-label" class="font-semibold text-emerald-300">10,000 trees/yr</span>
+              </div>
+              <input id="plantation-rate-slider" type="range" min="1000" max="50000" step="1000" value="10000"
+                class="w-full accent-emerald-400 cursor-pointer" oninput="updateAfforestationSimulator()" />
+            </div>
+
+            <!-- Target Timeline Slider -->
+            <div>
+              <div class="flex justify-between text-xs text-slate-300 mb-1">
+                <span>Target Timeline</span>
+                <span id="years-label" class="font-semibold text-emerald-300">5 Years</span>
+              </div>
+              <input id="timeline-years-slider" type="range" min="1" max="15" step="1" value="5"
+                class="w-full accent-emerald-400 cursor-pointer" oninput="updateAfforestationSimulator()" />
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+              <div id="recovery-progress-bar" class="bg-emerald-400 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+
+            <!-- Output Metrics Grid -->
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="p-2 rounded-lg bg-slate-800/80 border border-slate-700/40">
+                <p class="text-slate-400 text-[11px]">Net-Zero Time</p>
+                <p id="net-zero-years" class="text-sm font-bold text-white mt-0.5">-- yrs</p>
+              </div>
+              <div class="p-2 rounded-lg bg-slate-800/80 border border-slate-700/40">
+                <p class="text-slate-400 text-[11px]">Land Needed</p>
+                <p id="required-land-ha" class="text-sm font-bold text-white mt-0.5">-- ha</p>
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-400 leading-snug">
+              *Assumes 75% urban sapling survival &amp; 400 trees/ha planting density.
+            </p>
+          </div>
         </div>
 
       </div>
 
-      <div class="text-[11px] text-slate-500 text-center">
+      <div class="text-[11px] text-slate-500 text-center pt-4">
         Powered by Sentinel-2 • PyTorch CNN • Google Earth Engine
       </div>
     </aside>
@@ -147,6 +199,7 @@
 
     let currentTileLayer = null;
     let highlightGroup = L.layerGroup().addTo(map);
+    let latestTreesLost = 0; // Tracks latest detected tree loss for the simulator
 
     function onRegionChange() {
       const selected = document.getElementById('regionSelect').value;
@@ -154,70 +207,108 @@
       map.flyTo(reg.center, reg.zoom, { duration: 1.5 });
     }
 
+    // CHANGE 3: Live Simulator Calculation Logic
+    function updateAfforestationSimulator() {
+      const annualRate = parseInt(document.getElementById('plantation-rate-slider').value, 10);
+      const targetYears = parseInt(document.getElementById('timeline-years-slider').value, 10);
+
+      document.getElementById('rate-label').innerText = `${annualRate.toLocaleString()} trees/yr`;
+      document.getElementById('years-label').innerText = `${targetYears} ${targetYears === 1 ? 'Year' : 'Years'}`;
+
+      if (latestTreesLost <= 0) {
+        document.getElementById('recovery-badge').innerText = '0% Offset';
+        document.getElementById('recovery-progress-bar').style.width = '0%';
+        document.getElementById('net-zero-years').innerText = '0 yrs';
+        document.getElementById('required-land-ha').innerText = '0 ha';
+        return;
+      }
+
+      const survivalRate = 0.75;
+      const densityPerHa = 400;
+
+      const effectiveAnnual = annualRate * survivalRate;
+      const yearsToNetZero = (latestTreesLost / effectiveAnnual).toFixed(1);
+      const survivingInWindow = effectiveAnnual * targetYears;
+      const recoveryPct = Math.min(100, (survivingInWindow / latestTreesLost) * 100).toFixed(1);
+
+      const totalSaplingsNeeded = Math.ceil(latestTreesLost / survivalRate);
+      const requiredLandHa = (totalSaplingsNeeded / densityPerHa).toFixed(2);
+
+      document.getElementById('recovery-badge').innerText = `${recoveryPct}% Offset`;
+      document.getElementById('recovery-progress-bar').style.width = `${recoveryPct}%`;
+      document.getElementById('net-zero-years').innerText = `${yearsToNetZero} yrs`;
+      document.getElementById('required-land-ha').innerText = `${requiredLandHa} ha`;
+    }
+
     async function runAnalysis() {
-  const btn = document.getElementById('analyzeBtn');
-  const resultsCard = document.getElementById('resultsCard');
-  const selectedRegion = document.getElementById('regionSelect').value;
-  const regInfo = REGIONS[selectedRegion];
+      const btn = document.getElementById('analyzeBtn');
+      const resultsCard = document.getElementById('resultsCard');
+      const selectedRegion = document.getElementById('regionSelect').value;
+      const regInfo = REGIONS[selectedRegion];
 
-  map.flyTo(regInfo.center, regInfo.zoom, { duration: 1 });
+      map.flyTo(regInfo.center, regInfo.zoom, { duration: 1 });
 
-  btn.disabled = true;
-  btn.innerHTML = `<span>⏳ Processing (Render Server Waking Up... ~30s)</span>`;
+      btn.disabled = true;
+      btn.innerHTML = `<span>⏳ Processing (Render Server Waking Up... ~30s)</span>`;
 
-  try {
-    const response = await fetch('https://canopy-loss-detection.onrender.com/api/v1/analyze-canopy-loss', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        start_date: document.getElementById('startDate').value,
-        end_date: document.getElementById('endDate').value,
-        bbox: regInfo.bbox,
-        ndvi_threshold: 0.35
-      })
-    });
+      try {
+        const response = await fetch('https://canopy-loss-detection.onrender.com/api/v1/analyze-canopy-loss', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            start_date: document.getElementById('startDate').value,
+            end_date: document.getElementById('endDate').value,
+            bbox: regInfo.bbox,
+            ndvi_threshold: 0.35
+          })
+        });
 
-    if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.detail || `Server Error ${response.status}`);
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.detail || `Server Error ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          if (currentTileLayer) map.removeLayer(currentTileLayer);
+          highlightGroup.clearLayers();
+
+          currentTileLayer = L.tileLayer(data.tile_url, { opacity: 0.85, maxZoom: 18 }).addTo(map);
+
+          const [minLon, minLat, maxLon, maxLat] = regInfo.bbox;
+          const lossPoly = L.rectangle([
+            [minLat + 0.02, minLon + 0.02],
+            [maxLat - 0.02, maxLon - 0.02]
+          ], {
+            color: '#ef4444',
+            weight: 2,
+            dashArray: '5, 5',
+            fillOpacity: 0.05
+          });
+          highlightGroup.addLayer(lossPoly);
+
+          document.getElementById('lossHa').innerText = `${data.metrics.loss_hectares} ha`;
+          document.getElementById('treesLost').innerText = `~${data.metrics.estimated_trees_lost.toLocaleString()} trees`;
+          
+          // CHANGE 2: Sync simulator with newly detected tree loss
+          latestTreesLost = data.metrics.estimated_trees_lost;
+          updateAfforestationSimulator();
+
+          resultsCard.classList.remove('hidden');
+        }
+
+      } catch (err) {
+        console.error("API Error:", err);
+        alert(`Backend Request Failed: ${err.message}\n\nMake sure Render backend (https://canopy-loss-detection.onrender.com) is live!`);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>🔍 Analyze Canopy Loss</span>`;
+      }
     }
-
-    const data = await response.json();
-
-    if (data.success) {
-      if (currentTileLayer) map.removeLayer(currentTileLayer);
-      highlightGroup.clearLayers();
-
-      currentTileLayer = L.tileLayer(data.tile_url, { opacity: 0.85, maxZoom: 18 }).addTo(map);
-
-      const [minLon, minLat, maxLon, maxLat] = regInfo.bbox;
-    const lossPoly = L.rectangle([
-  [minLat + 0.02, minLon + 0.02],
-  [maxLat - 0.02, maxLon - 0.02]
-], {
-  color: '#ef4444',       // Border line red rahegi
-  weight: 2,              // Line thickness
-  dashArray: '5, 5',      // Dashed boundary format
-  fillOpacity: 0.05       // Filling color 5% kar di taaki map 100% visible rahe
-});
-      highlightGroup.addLayer(lossPoly);
-
-      document.getElementById('lossHa').innerText = `${data.metrics.loss_hectares} ha`;
-      document.getElementById('treesLost').innerText = `~${data.metrics.estimated_trees_lost.toLocaleString()} trees`;
-      resultsCard.classList.remove('hidden');
-    }
-
-  } catch (err) {
-    console.error("API Error:", err);
-    alert(`Backend Request Failed: ${err.message}\n\nMake sure Render backend (https://canopy-loss-detection.onrender.com) is live!`);
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = `<span>🔍 Analyze Canopy Loss</span>`;
-  }
-}
   </script>
 </body>
 </html>

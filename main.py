@@ -5,7 +5,12 @@ from typing import List
 import ee
 
 from gee_pipeline import init_gee, get_sentinel_composite
-from spatial_analysis import compute_canopy_loss, calculate_loss_hectares, estimate_trees_lost
+from spatial_analysis import (
+    compute_canopy_loss,
+    calculate_loss_hectares,
+    estimate_trees_lost,
+    calculate_afforestation_plan
+)
 
 app = FastAPI(
     title="Urban Tree Canopy Loss Monitoring API",
@@ -71,6 +76,13 @@ async def analyze_canopy_loss(payload: LossAnalysisRequest):
         loss_hectares = round(loss_sq_meters / 10000.0, 2)
         trees_lost = estimate_trees_lost(loss_hectares)
 
+        # --- NAYA CODE 1: Afforestation Recovery Plan Calculate Karna ---
+        afforestation_plan = calculate_afforestation_plan(
+            trees_lost=trees_lost,
+            annual_plantation_target=10000,
+            target_years=5
+        )
+
         return {
             "success": True,
             "query": {
@@ -84,6 +96,8 @@ async def analyze_canopy_loss(payload: LossAnalysisRequest):
                 "iou_score": 0.842,
                 "f1_score": 0.891
             },
+            # --- NAYA CODE 2: Response me Afforestation Plan Bhejna ---
+            "afforestation_plan": afforestation_plan,
             "tile_url": tile_url_template
         }
 
