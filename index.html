@@ -3,103 +3,173 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Delhi-NCR Urban Tree Canopy Loss Dashboard</title>
-  
+  <title>Delhi-NCR Urban Tree Canopy Loss Monitor</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
-    #map { height: calc(100vh - 70px); background: #0f172a; }
-    .legend-box { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(4px); }
+    body { background: #060b14; }
+    #map { height: 100%; width: 100%; background: #060b14; z-index: 1; }
+    .glass-panel {
+      background: rgba(10, 17, 30, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    /* Custom thin scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans">
+<body class="text-slate-100 font-sans antialiased selection:bg-emerald-500/30">
 
-  <!-- Header Navigation -->
-  <header class="h-[70px] bg-slate-800 border-b border-slate-700 px-6 flex items-center justify-between">
+  <!-- Top Navigation Bar -->
+  <header class="h-16 glass-panel border-b border-slate-800/80 px-4 md:px-6 flex items-center justify-between relative z-30">
     <div class="flex items-center gap-3">
-      <div class="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg text-xl">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 flex items-center justify-center text-xl shadow-inner">
         🌲
       </div>
       <div>
-        <h1 class="text-lg font-bold text-white leading-tight">Delhi-NCR Canopy Loss Monitor</h1>
-        <p class="text-xs text-slate-400">CNN Model & Google Earth Engine Integration</p>
+        <div class="flex items-center gap-2">
+          <h1 class="text-base md:text-lg font-bold tracking-tight text-white">CanopyGuard AI</h1>
+          <span class="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono font-semibold uppercase rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            Delhi-NCR
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400">Sentinel-2 (10m) • PyTorch U-Net • Google Earth Engine</p>
       </div>
     </div>
-    <div class="flex items-center gap-2">
-      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-      <span class="text-xs text-emerald-400 font-mono">Backend API Connected</span>
+
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-xs">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        <span class="text-slate-300 font-mono text-[11px]">GEE + FastAPI Live</span>
+      </div>
     </div>
   </header>
 
-  <div class="flex h-[calc(100vh-70px)]">
-    
-    <!-- Left Sidebar Controls -->
-    <aside class="w-80 bg-slate-800 border-r border-slate-700 p-5 flex flex-col justify-between overflow-y-auto z-20">
+  <!-- Main Workspace -->
+  <div class="flex flex-col md:flex-row h-[calc(100vh-64px)] overflow-hidden">
+
+    <!-- Left Control & Analytics Sidebar -->
+    <aside class="w-full md:w-[370px] h-[48vh] md:h-full glass-panel border-b md:border-b-0 md:border-r border-slate-800/80 p-5 flex flex-col justify-between overflow-y-auto z-20">
       <div class="space-y-5">
-        
-        <!-- Target Region Preset -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Select Target Region</label>
-          <select id="regionSelect" onchange="onRegionChange()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
-            <option value="delhi_central">Delhi Central Ridge Forest</option>
-            <option value="dwarka">Dwarka Sub-City</option>
-            <option value="noida">Noida Sector 62 / Expressway</option>
-            <option value="asola">Asola Bhatti Wildlife Sanctuary</option>
-          </select>
-        </div>
 
-        <!-- Date Inputs -->
-        <div class="grid grid-cols-2 gap-3">
+        <!-- Step 1: Region & Date Selection Card -->
+        <div class="p-4 rounded-2xl bg-slate-900/70 border border-slate-800/90 space-y-4 shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">1. Study Area & Timeline</span>
+            <span class="text-[11px] font-mono text-slate-500">10m / px</span>
+          </div>
+
+          <!-- Region Dropdown -->
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Start Date</label>
-            <input type="date" id="startDate" value="2019-04-01" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
-          </div>
-          <div>
-            <label class="block text-xs text-slate-400 mb-1">End Date</label>
-            <input type="date" id="endDate" value="2026-05-30" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
-          </div>
-        </div>
-
-        <!-- Run Analysis Button -->
-        <button onclick="runAnalysis()" id="analyzeBtn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow-lg shadow-emerald-900/30 transition flex items-center justify-center gap-2">
-          <span>🔍 Analyze Canopy Loss</span>
-        </button>
-
-        <!-- Dynamic Results Metrics Card -->
-        <div id="resultsCard" class="hidden bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-4">
-          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Quantified Impact</h3>
-          
-          <div class="bg-slate-800/60 rounded-lg p-3 border border-slate-700/50">
-            <div class="text-xs text-slate-400">Total Loss Area</div>
-            <div id="lossHa" class="text-2xl font-bold text-red-400 mt-0.5">0.0 ha</div>
+            <label class="block text-xs font-medium text-slate-300 mb-1.5">Target Corridor / Forest</label>
+            <select id="regionSelect" onchange="onRegionChange()" class="w-full bg-slate-950 border border-slate-700/80 hover:border-slate-600 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition">
+              <option value="delhi_central">Delhi Central Ridge Forest</option>
+              <option value="dwarka">Dwarka Sub-City Green Belt</option>
+              <option value="noida">Noida Sector 62 / Expressway</option>
+              <option value="asola">Asola Bhatti Wildlife Sanctuary</option>
+            </select>
           </div>
 
-          <div class="bg-slate-800/60 rounded-lg p-3 border border-slate-700/50">
-            <div class="text-xs text-slate-400">Est. Canopy Trees Lost</div>
-            <div id="treesLost" class="text-xl font-bold text-amber-400 mt-0.5">0 trees</div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <div class="bg-slate-800 p-2 rounded border border-slate-700/40">
-              <span class="text-slate-400 block">IoU Score:</span>
-              <span class="font-bold text-emerald-400">0.842</span>
+          <!-- Date Range -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Baseline Date (T1)</label>
+              <input type="date" id="startDate" value="2019-04-01" class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-2.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-emerald-500">
             </div>
-            <div class="bg-slate-800 p-2 rounded border border-slate-700/40">
-              <span class="text-slate-400 block">F1-Score:</span>
-              <span class="font-bold text-emerald-400">0.891</span>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Target Date (T2)</label>
+              <input type="date" id="endDate" value="2026-05-30" class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-2.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-emerald-500">
             </div>
           </div>
 
-          <!-- CHANGE 1: Afforestation & Net-Zero Recovery Simulator -->
-          <div id="afforestation-panel" class="pt-3 border-t border-slate-700/70 space-y-3">
+          <!-- Analyze CTA Button -->
+          <button onclick="runAnalysis()" id="analyzeBtn" class="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.99] text-white text-sm font-semibold rounded-xl shadow-lg shadow-emerald-950/60 transition-all flex items-center justify-center gap-2 cursor-pointer">
+            <span>🔍 Run Canopy Loss Detection</span>
+          </button>
+
+          <!-- Animated Loading Status Box -->
+          <div id="loadingBox" class="hidden p-3 rounded-xl bg-slate-950/90 border border-emerald-500/30 space-y-2">
+            <div class="flex items-center gap-2 text-xs text-emerald-300 font-medium">
+              <svg class="animate-spin h-4 w-4 text-emerald-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span id="loadingStepText">Connecting to Google Earth Engine...</span>
+            </div>
+            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div id="loadingProgress" class="bg-emerald-400 h-1.5 rounded-full transition-all duration-700" style="width: 25%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Results & Simulator Card -->
+        <div id="resultsCard" class="hidden space-y-4">
+
+          <!-- Quantified Loss KPIs -->
+          <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3 shadow-lg">
             <div class="flex items-center justify-between">
-              <h4 class="text-xs font-bold text-emerald-300 uppercase tracking-wider">
-                🌱 Recovery Simulator
+              <span class="text-[11px] font-bold uppercase tracking-wider text-rose-400">2. Quantified Canopy Loss</span>
+              <button onclick="downloadReport()" class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1 cursor-pointer">
+                <span>⬇ Report</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="p-3 rounded-xl bg-gradient-to-b from-rose-500/10 to-slate-950/60 border border-rose-500/20">
+                <div class="text-[11px] text-slate-400">Depleted Area</div>
+                <div id="lossHa" class="text-xl font-bold font-mono text-rose-400 mt-1">0.0 ha</div>
+              </div>
+              <div class="p-3 rounded-xl bg-gradient-to-b from-amber-500/10 to-slate-950/60 border border-amber-500/20">
+                <div class="text-[11px] text-slate-400">Est. Trees Lost</div>
+                <div id="treesLost" class="text-xl font-bold font-mono text-amber-400 mt-1">0</div>
+              </div>
+            </div>
+
+            <!-- Model Confidence Benchmark Bar -->
+            <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2">
+              <div class="flex justify-between text-[11px]">
+                <span class="text-slate-400">U-Net Segmentation IoU</span>
+                <span class="font-mono font-bold text-emerald-400">0.842 (F1: 0.891)</span>
+              </div>
+              <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div class="bg-emerald-400 h-1.5 rounded-full" style="width: 84.2%"></div>
+              </div>
+              <p class="text-[10px] text-slate-500">+25.5% higher spatial overlap vs. plain NDVI differencing</p>
+            </div>
+          </div>
+
+          <!-- Step 3: Afforestation & Net-Zero Recovery Simulator -->
+          <div id="afforestation-panel" class="p-4 rounded-2xl bg-gradient-to-b from-emerald-950/50 to-slate-900/90 border border-emerald-700/40 space-y-3.5 shadow-lg">
+            <div class="flex items-center justify-between">
+              <h4 class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
+                3. Net-Zero Recovery Simulator
               </h4>
-              <span id="recovery-badge" class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-emerald-500/20 text-emerald-300">
+              <span id="recovery-badge" class="px-2.5 py-0.5 text-[11px] font-mono font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 0% Offset
               </span>
             </div>
@@ -107,8 +177,8 @@
             <!-- Annual Plantation Slider -->
             <div>
               <div class="flex justify-between text-xs text-slate-300 mb-1">
-                <span>Plantation Rate</span>
-                <span id="rate-label" class="font-semibold text-emerald-300">10,000 trees/yr</span>
+                <span>Annual Plantation</span>
+                <span id="rate-label" class="font-mono font-semibold text-emerald-300">10,000 trees/yr</span>
               </div>
               <input id="plantation-rate-slider" type="range" min="1000" max="50000" step="1000" value="10000"
                 class="w-full accent-emerald-400 cursor-pointer" oninput="updateAfforestationSimulator()" />
@@ -118,55 +188,88 @@
             <div>
               <div class="flex justify-between text-xs text-slate-300 mb-1">
                 <span>Target Timeline</span>
-                <span id="years-label" class="font-semibold text-emerald-300">5 Years</span>
+                <span id="years-label" class="font-mono font-semibold text-emerald-300">5 Years</span>
               </div>
               <input id="timeline-years-slider" type="range" min="1" max="15" step="1" value="5"
                 class="w-full accent-emerald-400 cursor-pointer" oninput="updateAfforestationSimulator()" />
             </div>
 
-            <!-- Progress Bar -->
-            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-              <div id="recovery-progress-bar" class="bg-emerald-400 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            <!-- Recovery Progress Bar -->
+            <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+              <div id="recovery-progress-bar" class="bg-gradient-to-r from-emerald-500 to-teal-300 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
             </div>
 
-            <!-- Output Metrics Grid -->
-            <div class="grid grid-cols-2 gap-2 text-xs">
-              <div class="p-2 rounded-lg bg-slate-800/80 border border-slate-700/40">
-                <p class="text-slate-400 text-[11px]">Net-Zero Time</p>
-                <p id="net-zero-years" class="text-sm font-bold text-white mt-0.5">-- yrs</p>
+            <!-- Simulator Output Metrics -->
+            <div class="grid grid-cols-2 gap-2.5 text-xs">
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                <p class="text-slate-400 text-[11px]">Time to Net-Zero</p>
+                <p id="net-zero-years" class="text-sm font-mono font-bold text-white mt-0.5">-- yrs</p>
               </div>
-              <div class="p-2 rounded-lg bg-slate-800/80 border border-slate-700/40">
+              <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
                 <p class="text-slate-400 text-[11px]">Land Needed</p>
-                <p id="required-land-ha" class="text-sm font-bold text-white mt-0.5">-- ha</p>
+                <p id="required-land-ha" class="text-sm font-mono font-bold text-white mt-0.5">-- ha</p>
               </div>
             </div>
-            <p class="text-[10px] text-slate-400 leading-snug">
-              *Assumes 75% urban sapling survival &amp; 400 trees/ha planting density.
+
+            <p class="text-[10px] text-slate-400 leading-relaxed">
+              *Models 75% urban sapling survival rate &amp; 400 trees/ha plantation density.
             </p>
           </div>
-        </div>
 
+        </div>
       </div>
 
-      <div class="text-[11px] text-slate-500 text-center pt-4">
-        Powered by Sentinel-2 • PyTorch CNN • Google Earth Engine
+      <!-- Footer Credits -->
+      <div class="pt-4 mt-4 border-t border-slate-800/60 text-[11px] text-slate-500 flex items-center justify-between">
+        <span>GCET Greater Noida • AIML</span>
+        <span class="font-mono text-slate-400">v2.0</span>
       </div>
     </aside>
 
-    <!-- Map Viewport -->
-    <main class="flex-1 relative">
+    <!-- Right Interactive Map Viewport -->
+    <main class="flex-1 h-[52vh] md:h-full relative">
       <div id="map"></div>
 
-      <!-- Map Legend Overlay -->
-      <div class="absolute bottom-6 right-6 z-[1000] legend-box p-4 rounded-xl border border-slate-700 text-xs shadow-xl space-y-2">
-        <div class="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Map Legend</div>
-        <div class="flex items-center gap-2">
-          <span class="w-3 h-3 rounded bg-red-500/80 border border-red-400"></span>
-          <span class="text-slate-200">Canopy Loss Patches (2019 ➔ 2026)</span>
+      <!-- Floating Top-Right Map Layer Controls -->
+      <div class="absolute top-4 right-4 z-[1000] glass-panel p-3 rounded-2xl border border-slate-700/80 shadow-2xl space-y-2.5 text-xs w-56">
+        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Map Controls</div>
+
+        <!-- Basemap Toggle -->
+        <div class="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <button id="btnSatellite" onclick="setBasemap('satellite')" class="py-1.5 rounded-lg bg-emerald-600 text-white font-medium text-[11px] transition cursor-pointer">
+            Satellite
+          </button>
+          <button id="btnDark" onclick="setBasemap('dark')" class="py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-[11px] transition cursor-pointer">
+            Dark Map
+          </button>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="w-3 h-3 rounded bg-emerald-500/40 border border-emerald-400"></span>
-          <span class="text-slate-200">Baseline Tree Canopy (NDVI &gt; 0.35)</span>
+
+        <!-- Overlay Opacity Slider -->
+        <div>
+          <div class="flex justify-between text-[11px] text-slate-300 mb-1">
+            <span>Loss Overlay Opacity</span>
+            <span id="opacityVal" class="font-mono text-emerald-400">85%</span>
+          </div>
+          <input type="range" id="opacitySlider" min="0" max="100" value="85" oninput="updateOverlayOpacity()" class="w-full accent-rose-500 cursor-pointer">
+        </div>
+
+        <!-- Bounding Box Toggle -->
+        <label class="flex items-center justify-between text-[11px] text-slate-300 cursor-pointer pt-1 border-t border-slate-800">
+          <span>Show Region Boundary</span>
+          <input type="checkbox" id="toggleBoundary" checked onchange="toggleBoundaryBox()" class="accent-emerald-500 rounded cursor-pointer">
+        </label>
+      </div>
+
+      <!-- Floating Bottom-Right Legend -->
+      <div class="absolute bottom-5 right-4 z-[1000] glass-panel px-4 py-3 rounded-2xl border border-slate-700/80 text-xs shadow-2xl space-y-2">
+        <div class="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Legend</div>
+        <div class="flex items-center gap-2.5">
+          <span class="w-3.5 h-3.5 rounded bg-rose-500/80 border border-rose-400 shadow-sm shadow-rose-500/50"></span>
+          <span class="text-slate-200 text-[11px]">Detected Canopy Loss (U-Net)</span>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <span class="w-3.5 h-3.5 rounded border-2 border-dashed border-rose-400"></span>
+          <span class="text-slate-300 text-[11px]">Target Bounding Box (AOI)</span>
         </div>
       </div>
     </main>
@@ -178,36 +281,74 @@
 
   <script>
     const REGIONS = {
-      delhi_central: { bbox: [77.10, 28.50, 77.25, 28.65], center: [28.575, 77.175], zoom: 12 },
-      dwarka: { bbox: [77.00, 28.55, 77.10, 28.62], center: [28.585, 77.05], zoom: 13 },
-      noida: { bbox: [77.30, 28.55, 77.40, 28.65], center: [28.60, 77.35], zoom: 13 },
-      asola: { bbox: [77.20, 28.40, 77.30, 28.50], center: [28.45, 77.25], zoom: 13 }
+      delhi_central: { name: "Delhi Central Ridge Forest", bbox: [77.10, 28.50, 77.25, 28.65], center: [28.575, 77.175], zoom: 12 },
+      dwarka: { name: "Dwarka Sub-City Green Belt", bbox: [77.00, 28.55, 77.10, 28.62], center: [28.585, 77.05], zoom: 13 },
+      noida: { name: "Noida Sector 62 / Expressway", bbox: [77.30, 28.55, 77.40, 28.65], center: [28.60, 77.35], zoom: 13 },
+      asola: { name: "Asola Bhatti Wildlife Sanctuary", bbox: [77.20, 28.40, 77.30, 28.50], center: [28.45, 77.25], zoom: 13 }
     };
 
-    // Initialize Map explicitly zoomed into Delhi
     const map = L.map('map', {
       center: [28.575, 77.175],
       zoom: 12,
       maxZoom: 18,
-      minZoom: 8
+      minZoom: 8,
+      zoomControl: true
     });
-    
-    // Base Satellite Layer
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+
+    // Basemap Layers
+    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Esri Satellite'
     }).addTo(map);
 
+    const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: 'CartoDB Dark'
+    });
+
     let currentTileLayer = null;
     let highlightGroup = L.layerGroup().addTo(map);
-    let latestTreesLost = 0; // Tracks latest detected tree loss for the simulator
+    let latestTreesLost = 0;
+    let latestAnalysisReport = null;
+
+    function setBasemap(type) {
+      const btnSat = document.getElementById('btnSatellite');
+      const btnDark = document.getElementById('btnDark');
+      if (type === 'satellite') {
+        map.removeLayer(darkLayer);
+        satelliteLayer.addTo(map);
+        btnSat.className = "py-1.5 rounded-lg bg-emerald-600 text-white font-medium text-[11px] transition cursor-pointer";
+        btnDark.className = "py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-[11px] transition cursor-pointer";
+      } else {
+        map.removeLayer(satelliteLayer);
+        darkLayer.addTo(map);
+        btnDark.className = "py-1.5 rounded-lg bg-emerald-600 text-white font-medium text-[11px] transition cursor-pointer";
+        btnSat.className = "py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-[11px] transition cursor-pointer";
+      }
+      if (currentTileLayer) currentTileLayer.bringToFront();
+    }
+
+    function updateOverlayOpacity() {
+      const val = document.getElementById('opacitySlider').value;
+      document.getElementById('opacityVal').innerText = `${val}%`;
+      if (currentTileLayer) {
+        currentTileLayer.setOpacity(val / 100);
+      }
+    }
+
+    function toggleBoundaryBox() {
+      const checked = document.getElementById('toggleBoundary').checked;
+      if (checked) {
+        highlightGroup.addTo(map);
+      } else {
+        map.removeLayer(highlightGroup);
+      }
+    }
 
     function onRegionChange() {
       const selected = document.getElementById('regionSelect').value;
       const reg = REGIONS[selected];
-      map.flyTo(reg.center, reg.zoom, { duration: 1.5 });
+      map.flyTo(reg.center, reg.zoom, { duration: 1.4 });
     }
 
-    // CHANGE 3: Live Simulator Calculation Logic
     function updateAfforestationSimulator() {
       const annualRate = parseInt(document.getElementById('plantation-rate-slider').value, 10);
       const targetYears = parseInt(document.getElementById('timeline-years-slider').value, 10);
@@ -242,6 +383,9 @@
 
     async function runAnalysis() {
       const btn = document.getElementById('analyzeBtn');
+      const loadingBox = document.getElementById('loadingBox');
+      const loadingStep = document.getElementById('loadingStepText');
+      const loadingBar = document.getElementById('loadingProgress');
       const resultsCard = document.getElementById('resultsCard');
       const selectedRegion = document.getElementById('regionSelect').value;
       const regInfo = REGIONS[selectedRegion];
@@ -249,18 +393,38 @@
       map.flyTo(regInfo.center, regInfo.zoom, { duration: 1 });
 
       btn.disabled = true;
-      btn.innerHTML = `<span>⏳ Processing (Render Server Waking Up... ~30s)</span>`;
+      btn.classList.add('opacity-60', 'cursor-not-allowed');
+      loadingBox.classList.remove('hidden');
+
+      // Step-by-step progress animation while Render wakes up
+      const steps = [
+        { text: "1/3 Fetching Sentinel-2 SR via GEE...", pct: "35%" },
+        { text: "2/3 Applying SCL Cloud Mask & NDVI...", pct: "68%" },
+        { text: "3/3 Running Two-Date U-Net Inference...", pct: "90%" }
+      ];
+      let stepIdx = 0;
+      loadingStep.innerText = steps[0].text;
+      loadingBar.style.width = steps[0].pct;
+
+      const stepTimer = setInterval(() => {
+        stepIdx = (stepIdx + 1) % steps.length;
+        loadingStep.innerText = steps[stepIdx].text;
+        loadingBar.style.width = steps[stepIdx].pct;
+      }, 4500);
 
       try {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
         const response = await fetch('https://canopy-loss-detection.onrender.com/api/v1/analyze-canopy-loss', {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
           body: JSON.stringify({
-            start_date: document.getElementById('startDate').value,
-            end_date: document.getElementById('endDate').value,
+            start_date: startDate,
+            end_date: endDate,
             bbox: regInfo.bbox,
             ndvi_threshold: 0.35
           })
@@ -277,37 +441,83 @@
           if (currentTileLayer) map.removeLayer(currentTileLayer);
           highlightGroup.clearLayers();
 
-          currentTileLayer = L.tileLayer(data.tile_url, { opacity: 0.85, maxZoom: 18 }).addTo(map);
+          const initialOpacity = document.getElementById('opacitySlider').value / 100;
+          currentTileLayer = L.tileLayer(data.tile_url, { opacity: initialOpacity, maxZoom: 18 }).addTo(map);
 
           const [minLon, minLat, maxLon, maxLat] = regInfo.bbox;
           const lossPoly = L.rectangle([
             [minLat + 0.02, minLon + 0.02],
             [maxLat - 0.02, maxLon - 0.02]
           ], {
-            color: '#ef4444',
+            color: '#fb7185',
             weight: 2,
-            dashArray: '5, 5',
-            fillOpacity: 0.05
+            dashArray: '6, 6',
+            fillOpacity: 0.04
           });
           highlightGroup.addLayer(lossPoly);
+          toggleBoundaryBox();
 
           document.getElementById('lossHa').innerText = `${data.metrics.loss_hectares} ha`;
-          document.getElementById('treesLost').innerText = `~${data.metrics.estimated_trees_lost.toLocaleString()} trees`;
-          
-          // CHANGE 2: Sync simulator with newly detected tree loss
+          document.getElementById('treesLost').innerText = `~${data.metrics.estimated_trees_lost.toLocaleString()}`;
+
           latestTreesLost = data.metrics.estimated_trees_lost;
           updateAfforestationSimulator();
+
+          latestAnalysisReport = {
+            region: regInfo.name,
+            startDate,
+            endDate,
+            lossHectares: data.metrics.loss_hectares,
+            treesLost: data.metrics.estimated_trees_lost,
+            iou: data.metrics.iou_score,
+            f1: data.metrics.f1_score
+          };
 
           resultsCard.classList.remove('hidden');
         }
 
       } catch (err) {
         console.error("API Error:", err);
-        alert(`Backend Request Failed: ${err.message}\n\nMake sure Render backend (https://canopy-loss-detection.onrender.com) is live!`);
+        alert(`Backend Request Failed: ${err.message}\n\nMake sure Render backend is awake and try again.`);
       } finally {
+        clearInterval(stepTimer);
         btn.disabled = false;
-        btn.innerHTML = `<span>🔍 Analyze Canopy Loss</span>`;
+        btn.classList.remove('opacity-60', 'cursor-not-allowed');
+        loadingBox.classList.add('hidden');
       }
+    }
+
+    function downloadReport() {
+      if (!latestAnalysisReport) return;
+      const r = latestAnalysisReport;
+      const netZero = document.getElementById('net-zero-years').innerText;
+      const landNeeded = document.getElementById('required-land-ha').innerText;
+
+      const reportText = [
+        "==========================================================",
+        "  DELHI-NCR URBAN TREE CANOPY LOSS AUDIT REPORT",
+        "==========================================================",
+        `Target Region      : ${r.region}`,
+        `Analysis Window    : ${r.startDate} to ${r.endDate}`,
+        `Canopy Loss Area   : ${r.lossHectares} Hectares`,
+        `Est. Trees Lost    : ~${r.treesLost.toLocaleString()} trees`,
+        `Model Accuracy     : IoU = ${r.iou} | F1-Score = ${r.f1}`,
+        "----------------------------------------------------------",
+        "  AFFORESTATION & NET-ZERO RECOVERY ESTIMATE",
+        "----------------------------------------------------------",
+        `Est. Time to Offset: ${netZero}`,
+        `Replantation Land  : ${landNeeded} (at 400 trees/ha, 75% survival)`,
+        "==========================================================",
+        "Generated by CanopyGuard AI (GCET Greater Noida)"
+      ].join("\n");
+
+      const blob = new Blob([reportText], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Canopy_Loss_Report_${r.region.replace(/\s+/g, '_')}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
     }
   </script>
 </body>
