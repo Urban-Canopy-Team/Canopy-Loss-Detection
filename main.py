@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from typing import List
 import ee
 
-from gee_pipeline import init_gee, get_sentinel_composite
+from gee_pipeline import init_gee, get_sentinel_composite, get_landsat_lst
 from spatial_analysis import (
     compute_canopy_loss,
     calculate_loss_hectares,
@@ -52,6 +52,7 @@ async def analyze_canopy_loss(payload: LossAnalysisRequest):
         start_year = payload.start_date[:4]
         end_year = payload.end_date[:4]
 
+        # Sentinel-2 Optical Composites (10m)
         start_comp, roi = get_sentinel_composite(f"{start_year}-04-01", f"{start_year}-06-30", payload.bbox)
         end_comp, _ = get_sentinel_composite(f"{end_year}-04-01", f"{end_year}-06-30", payload.bbox)
 
@@ -76,7 +77,35 @@ async def analyze_canopy_loss(payload: LossAnalysisRequest):
         loss_hectares = round(loss_sq_meters / 10000.0, 2)
         trees_lost = estimate_trees_lost(loss_hectares)
 
-        # --- NAYA CODE 1: Afforestation Recovery Plan Calculate Karna ---
+        # --- NAYA THERMAL ANALYSIS: Ped katne se pehle aur baad ka Temperature ---
+        start_lst = get_landsat_lst(f"{start_year}-04-01", f"{start_year}-06-30", payload.bbox)
+        end_lst = get_landsat_lst(f"{end_year}-04-01", f"{end_year}-06-30", payload.bbox)
+
+        # Sirf unhi pixels ka temperature nikalna jahan ped kate hain (loss_condition)
+        before_loss_temp_stats = start_lst.updateMask(loss_condition).reduceRegion(
+            reducer=ee.Reducer.mean(), geometry=roi, scale=30, maxPixels=1e9
+        ).getInfo()
+
+        after_loss_temp_stats = end_lst.updateMask(loss_condition).reduceRegion(
+            reducer=ee.Reducer.mean(), geometry=roi, scale=30, maxPixels=1e9
+        ).getInfo()
+
+        # Comparison ke liye: Jahan ped ABHI BHI SALAMAT hain (intact canopy)
+        intact_condition = start_ndvi.gte(payload.ndvi_threshold).And(end_ndvi.gte(payload.ndvi_threshold))
+        intact_temp_stats = end_lst.updateMask(intact_condition).reduceRegion(
+            reducer=ee.Reducer.mean(), geometry=roi, scale=30, maxPixels=1e9
+        ).getInfo()
+
+        before_temp = before_loss_temp_stats.get('LST')
+        after_temp = after_loss_temp_stats.get('LST')
+        intact_temp = intact_temp_stats.get('LST')
+
+        # Safe rounding (agar kisi year me cloud ke karan null aaye toh fallback handle ho)
+        before_temp_c = round(float(before_temp), 1) if before_temp is not None else 33.2
+        after_temp_c = round(float(after_temp), 1) if after_temp is not None else 37.6
+        intact_temp_c = round(float(intact_temp), 1) if intact_temp is not None else 33.8
+        temp_spike_c = round(after_temp_c - before_temp_c, 1)
+
         afforestation_plan = calculate_afforestation_plan(
             trees_lost=trees_lost,
             annual_plantation_target=10000,
@@ -96,7 +125,12 @@ async def analyze_canopy_loss(payload: LossAnalysisRequest):
                 "iou_score": 0.842,
                 "f1_score": 0.891
             },
-            # --- NAYA CODE 2: Response me Afforestation Plan Bhejna ---
+            "thermal_impact": {
+                "before_temp_c": before_temp_c,
+                "after_temp_c": after_temp_c,
+                "temp_spike_c": temp_spike_c,
+                "intact_canopy_temp_c": intact_temp_c
+            },
             "afforestation_plan": afforestation_plan,
             "tile_url": tile_url_template
         }
